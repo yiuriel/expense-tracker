@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,10 @@ import {
   TextInput,
   Modal,
   SafeAreaView,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import * as Speech from "expo-speech";
 
 interface Expense {
   id: string;
@@ -22,8 +23,9 @@ interface Expense {
 export const HomeScreen = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [isListening, setIsListening] = useState(false);
 
   useEffect(() => {
     loadExpenses();
@@ -31,12 +33,12 @@ export const HomeScreen = () => {
 
   const loadExpenses = async () => {
     try {
-      const savedExpenses = await AsyncStorage.getItem('expenses');
+      const savedExpenses = await AsyncStorage.getItem("expenses");
       if (savedExpenses) {
         setExpenses(JSON.parse(savedExpenses));
       }
     } catch (error) {
-      console.error('Error loading expenses:', error);
+      console.error("Error loading expenses:", error);
     }
   };
 
@@ -53,13 +55,36 @@ export const HomeScreen = () => {
     const updatedExpenses = [...expenses, newExpense];
     setExpenses(updatedExpenses);
     setModalVisible(false);
-    setAmount('');
-    setDescription('');
+    setAmount("");
+    setDescription("");
 
     try {
-      await AsyncStorage.setItem('expenses', JSON.stringify(updatedExpenses));
+      await AsyncStorage.setItem("expenses", JSON.stringify(updatedExpenses));
+      Speech.speak(`Added expense: ${amount} dollars for ${description}`);
     } catch (error) {
-      console.error('Error saving expense:', error);
+      console.error("Error saving expense:", error);
+    }
+  };
+
+  const startListening = async () => {
+    try {
+      setIsListening(true);
+      await Speech.speak(
+        "Ready to add expense. Tap the plus button and enter the details."
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = async () => {
+    try {
+      await Speech.stop();
+      setIsListening(false);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -84,12 +109,22 @@ export const HomeScreen = () => {
         style={styles.list}
       />
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add" size={30} color="white" />
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.micButton} onPress={startListening}>
+          <Ionicons
+            name={isListening ? "mic" : "mic-outline"}
+            size={28}
+            color="white"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Ionicons name="add" size={28} color="white" />
+        </TouchableOpacity>
+      </View>
 
       <Modal
         animationType="slide"
@@ -100,7 +135,7 @@ export const HomeScreen = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Expense</Text>
-            
+
             <TextInput
               style={styles.input}
               placeholder="Amount"
@@ -109,7 +144,7 @@ export const HomeScreen = () => {
               keyboardType="decimal-pad"
               autoFocus
             />
-            
+
             <TextInput
               style={styles.input}
               placeholder="Description"
@@ -124,7 +159,7 @@ export const HomeScreen = () => {
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
                 onPress={addExpense}
@@ -142,21 +177,21 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   list: {
     flex: 1,
   },
   expenseItem: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 15,
     marginHorizontal: 15,
     marginVertical: 5,
     borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -167,28 +202,28 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2ecc71',
+    fontWeight: "bold",
+    color: "#2ecc71",
   },
   expenseDescription: {
-    color: '#7f8c8d',
+    color: "#7f8c8d",
     marginTop: 5,
   },
   expenseDate: {
-    color: '#95a5a6',
+    color: "#95a5a6",
     fontSize: 12,
   },
   addButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
     right: 30,
-    backgroundColor: '#2ecc71',
+    backgroundColor: "#2ecc71",
     width: 60,
     height: 60,
     borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -199,16 +234,16 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 20,
-    width: '80%',
-    shadowColor: '#000',
+    width: "80%",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -219,21 +254,22 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
     fontSize: 16,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 20,
   },
   button: {
     flex: 1,
@@ -242,15 +278,31 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: '#e74c3c',
+    backgroundColor: "#e74c3c",
   },
   saveButton: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: "#2ecc71",
   },
   buttonText: {
-    color: 'white',
-    textAlign: 'center',
+    color: "white",
+    textAlign: "center",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  micButton: {
+    backgroundColor: "#FF3B30",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
